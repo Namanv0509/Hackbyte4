@@ -190,7 +190,7 @@ export const GraphView: React.FC<GraphViewProps> = ({ data, onEditValue, onUpdat
           fill: var(--text-color);
         }
         .react-flow__edge-path {
-          stroke: var(--border-color);
+          stroke: var(--graph-accent);
           stroke-width: 2;
         }
       `}</style>

@@ -32,6 +32,20 @@ function maskApiKey(key: string): string {
   return `${key.slice(0, 4)}…${key.slice(-4)} (${key.length} chars)`;
 }
 
+/** Webview postMessage deserializes JSON; `content` may already be an object (not a string). */
+function parseExportJsonContent(content: unknown): any {
+  if (content === null || content === undefined) {
+    throw new Error('No export content');
+  }
+  if (typeof content === 'string') {
+    return JSON.parse(content);
+  }
+  if (typeof content === 'object') {
+    return content;
+  }
+  throw new Error('Invalid export content type');
+}
+
 export function activate(context: vscode.ExtensionContext) {
   flowjamOutput = vscode.window.createOutputChannel('Flowjam');
   context.subscriptions.push(flowjamOutput);
@@ -372,11 +386,14 @@ async function handleWebviewMessage(panel: vscode.WebviewPanel, message: any) {
         let exportContent: string | Buffer;
         let fileExtension: string;
         const format = message.format as string;
-        const jsonData = JSON.parse(message.content);
+        const jsonData = parseExportJsonContent(message.content);
 
         switch (format) {
           case 'json':
-            exportContent = message.content;
+            exportContent =
+              typeof message.content === 'string'
+                ? message.content
+                : JSON.stringify(jsonData, null, 2);
             fileExtension = 'json';
             break;
           case 'xml':
@@ -1099,49 +1116,49 @@ async function exportAsPng(panel: vscode.WebviewPanel, _jsonData: any, _yamlCont
 // --- Highlighting Logic ---
 
 function handleHighlightPath(path: string[]) {
-    if (!currentEditor) return;
+  if (!currentEditor) return;
 
-    const yaml = currentEditor.document.getText();
-    const range = getRangeFromPath(yaml, path);
-    if (range) {
-        const start = currentEditor.document.positionAt(range[0]);
-        const end = currentEditor.document.positionAt(range[1]);
-        const vscodeRange = new vscode.Range(start, end);
-        
-        currentEditor.selection = new vscode.Selection(start, end);
-        currentEditor.revealRange(vscodeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-    }
+  const yaml = currentEditor.document.getText();
+  const range = getRangeFromPath(yaml, path);
+  if (range) {
+    const start = currentEditor.document.positionAt(range[0]);
+    const end = currentEditor.document.positionAt(range[1]);
+    const vscodeRange = new vscode.Range(start, end);
+
+    currentEditor.selection = new vscode.Selection(start, end);
+    currentEditor.revealRange(vscodeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  }
 }
 
 function getRangeFromPath(yamlContent: string, path: string[]) {
-    try {
-        const docs = YAML.parseAllDocuments(yamlContent);
-        const docIndex = parseInt(path[0]);
-        const doc = docs[docIndex];
-        if (!doc) return null;
+  try {
+    const docs = YAML.parseAllDocuments(yamlContent);
+    const docIndex = parseInt(path[0]);
+    const doc = docs[docIndex];
+    if (!doc) return null;
 
-        const actualPath = path.slice(1).map(p => {
-            if (p.startsWith('[') && p.endsWith(']')) {
-                return parseInt(p.slice(1, -1));
-            }
-            return p;
-        });
+    const actualPath = path.slice(1).map(p => {
+      if (p.startsWith('[') && p.endsWith(']')) {
+        return parseInt(p.slice(1, -1));
+      }
+      return p;
+    });
 
-        const node = doc.getIn(actualPath, true);
-        if (YAML.isNode(node) && node.range) {
-            return node.range;
-        }
-    } catch (e) {
-        console.error('Error in getRangeFromPath:', e);
+    const node = doc.getIn(actualPath, true);
+    if (YAML.isNode(node) && node.range) {
+      return node.range;
     }
-    return null;
+  } catch (e) {
+    console.error('Error in getRangeFromPath:', e);
+  }
+  return null;
 }
 
 function getPathAtOffset(yamlContent: string, offset: number): string[] | null {
   try {
     const docs = YAML.parseAllDocuments(yamlContent);
     let docOffset = 0;
-    
+
     for (let i = 0; i < docs.length; i++) {
       const doc = docs[i];
       // YAML package documents have a range [start, end, charEnd]
@@ -1163,7 +1180,7 @@ function getPathAtOffset(yamlContent: string, offset: number): string[] | null {
 function findPathInDocument(doc: YAML.Document, offset: number): string[] | null {
   const node = doc.contents;
   if (!node) return null;
-  
+
   const path: string[] = [];
   let current: any = node;
 

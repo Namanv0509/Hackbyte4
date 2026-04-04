@@ -669,6 +669,7 @@ const YamlPreviewInner: React.FC<YamlPreviewProps> = ({ initialContent, vscodeAp
             --error-text: #c56c6c;
             --info-background: #f0f0f2;
             --info-text: #5e7985;
+            --graph-accent: #A855F7;
           }
           
           [data-theme='dark'] {
@@ -688,6 +689,7 @@ const YamlPreviewInner: React.FC<YamlPreviewProps> = ({ initialContent, vscodeAp
             --error-text: #f48771;
             --info-background: #2d3439;
             --info-text: #a6bbc5;
+            --graph-accent: #7C3AED;
           }
 
           .view-switcher {
@@ -914,7 +916,7 @@ const YamlPreviewInner: React.FC<YamlPreviewProps> = ({ initialContent, vscodeAp
 
       {/* AI Config Popover */}
       {!error && isAiEnabled && (
-        <div className="ai-menu-container" style={{ position: 'absolute', right: '40px', top: '100px', zIndex: 100 }}>
+        <div className="ai-menu-container" style={{ position: 'absolute', right: '0px', top: '100px', zIndex: 100 }}>
           <div className="ai-config-form">
             <h4>✨ Gemini Validation</h4>
             <p>Paste your API key below to enable intelligent graph validation.</p>

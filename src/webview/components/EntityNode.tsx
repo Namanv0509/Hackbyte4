@@ -50,7 +50,7 @@ export const EntityNode: React.FC<NodeProps> = ({ data, selected }) => {
       <style>{`
         .entity-node-card {
           background-color: var(--panel-background);
-          border: 2px solid var(--border-color);
+          border: 2px solid var(--graph-accent);
           border-radius: 8px;
           min-width: 180px;
           padding: 0;
@@ -60,8 +60,8 @@ export const EntityNode: React.FC<NodeProps> = ({ data, selected }) => {
           overflow: visible;
         }
         .entity-node-card.selected {
-          border-color: var(--button-background);
-          box-shadow: 0 0 10px var(--button-background);
+          border-color: var(--graph-accent);
+          box-shadow: 0 0 12px var(--graph-accent);
           transform: translateY(-2px);
         }
         .entity-header {
@@ -120,7 +120,7 @@ export const EntityNode: React.FC<NodeProps> = ({ data, selected }) => {
         .entity-handle {
           width: 8px;
           height: 8px;
-          background-color: var(--button-background);
+          background-color: var(--graph-accent);
           border: 2px solid var(--panel-background);
         }
       `}</style>

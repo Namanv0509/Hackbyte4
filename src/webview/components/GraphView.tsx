@@ -25,13 +25,15 @@ interface GraphViewProps {
   data: any;
   onEditValue: (path: string[], newValue: any) => void;
   onUpdateStructure: (action: 'move' | 'remove', sourcePath: string[], targetPath?: string[]) => void;
+  onHighlightNode?: (path: string[]) => void;
+  selectedNodeId?: string | null;
 }
 
 const nodeTypes = {
   entityNode: EntityNode,
 };
 
-export const GraphView: React.FC<GraphViewProps> = ({ data, onEditValue, onUpdateStructure }) => {
+export const GraphView: React.FC<GraphViewProps> = ({ data, onEditValue, onUpdateStructure, onHighlightNode, selectedNodeId }) => {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => transformToLogicalGraph(data), [data]);
   
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
@@ -44,6 +46,18 @@ export const GraphView: React.FC<GraphViewProps> = ({ data, onEditValue, onUpdat
     setNodes(newNodes);
     setEdges(newEdges);
   }, [data]);
+  
+  // Sync selectedNode when selectedNodeId changes
+  React.useEffect(() => {
+    if (selectedNodeId) {
+      const node = nodes.find(n => n.id === selectedNodeId);
+      if (node) {
+        setSelectedNode(node);
+      }
+    } else {
+      setSelectedNode(null);
+    }
+  }, [selectedNodeId, nodes]);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -95,7 +109,10 @@ export const GraphView: React.FC<GraphViewProps> = ({ data, onEditValue, onUpdat
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
-  }, []);
+    if (onHighlightNode) {
+      onHighlightNode(node.data.path);
+    }
+  }, [onHighlightNode]);
 
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);

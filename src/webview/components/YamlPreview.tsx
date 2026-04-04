@@ -41,6 +41,8 @@ const YamlPreviewInner: React.FC<YamlPreviewProps> = ({ initialContent, vscodeAp
   // Saving states lifted from TableView
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Highlighted node (from code editor selection)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   // Convert YAML to JSON
   const parseYaml = (content: string) => {
@@ -117,6 +119,13 @@ const YamlPreviewInner: React.FC<YamlPreviewProps> = ({ initialContent, vscodeAp
         } else {
           setCommunicationStatus(`Error: ${message.error || 'Export failed'}`);
           setTimeout(() => setCommunicationStatus(null), 5000);
+        }
+      } else if (message.command === 'highlightNode') {
+        console.log('YamlPreview: Received highlightNode from VSCode:', message.id);
+        setSelectedNodeId(message.id);
+        // Automatically switch to graph view if highlighting from editor
+        if (viewMode !== 'graph') {
+           setViewMode('graph');
         }
       } else if (message.command === 'prepareForScreenshot') {
         // Process screenshot preparation
@@ -399,6 +408,13 @@ const YamlPreviewInner: React.FC<YamlPreviewProps> = ({ initialContent, vscodeAp
   // Toggle export menu
   const toggleExportMenu = () => {
     setShowExportMenu(!showExportMenu);
+  };
+
+  const handleHighlightNode = (path: string[]) => {
+    vscodeApi.postMessage({
+        command: 'highlightPath',
+        path: path
+    });
   };
 
   return (
@@ -711,6 +727,8 @@ const YamlPreviewInner: React.FC<YamlPreviewProps> = ({ initialContent, vscodeAp
               data={jsonData} 
               onEditValue={updateYamlValue}
               onUpdateStructure={updateYamlStructure}
+              onHighlightNode={handleHighlightNode}
+              selectedNodeId={selectedNodeId}
             />
           )}
         </div>

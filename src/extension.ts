@@ -10,6 +10,7 @@ import { stringify } from 'csv-stringify/sync';
 import MarkdownIt from 'markdown-it';
 import * as PDFDocument from 'pdfkit';
 import * as puppeteer from 'puppeteer';
+import * as YAML from 'yaml';
 
 // Variable to hold reference to the Webview panel
 let currentPanel: vscode.WebviewPanel | undefined = undefined;
@@ -107,6 +108,21 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }
   });
+
+  // Highlight node in graph when selection changes in editor
+  vscode.window.onDidChangeTextEditorSelection(event => {
+    if (currentPanel && event.textEditor === currentEditor) {
+      const offset = event.textEditor.document.offsetAt(event.selections[0].active);
+      const yaml = event.textEditor.document.getText();
+      const path = getPathAtOffset(yaml, offset);
+      if (path) {
+        sendMessageToWebview(currentPanel, {
+          command: 'highlightNode',
+          id: path.join('.')
+        });
+      }
+    }
+  }, null, context.subscriptions);
 
   context.subscriptions.push(disposable);
 }
@@ -442,6 +458,9 @@ async function handleWebviewMessage(panel: vscode.WebviewPanel, message: any) {
           format: message.format
         });
       }
+      break;
+    case 'highlightPath':
+      handleHighlightPath(message.path);
       break;
     case 'error':
       // Webview error notification
@@ -986,6 +1005,113 @@ async function exportAsPng(panel: vscode.WebviewPanel, _jsonData: any, _yamlCont
       format: 'png'
     });
   }
+}
+
+// --- Highlighting Logic ---
+
+function handleHighlightPath(path: string[]) {
+    if (!currentEditor) return;
+
+    const yaml = currentEditor.document.getText();
+    const range = getRangeFromPath(yaml, path);
+    if (range) {
+        const start = currentEditor.document.positionAt(range[0]);
+        const end = currentEditor.document.positionAt(range[1]);
+        const vscodeRange = new vscode.Range(start, end);
+        
+        currentEditor.selection = new vscode.Selection(start, end);
+        currentEditor.revealRange(vscodeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    }
+}
+
+function getRangeFromPath(yamlContent: string, path: string[]) {
+    try {
+        const docs = YAML.parseAllDocuments(yamlContent);
+        const docIndex = parseInt(path[0]);
+        const doc = docs[docIndex];
+        if (!doc) return null;
+
+        const actualPath = path.slice(1).map(p => {
+            if (p.startsWith('[') && p.endsWith(']')) {
+                return parseInt(p.slice(1, -1));
+            }
+            return p;
+        });
+
+        const node = doc.getIn(actualPath, true);
+        if (YAML.isNode(node) && node.range) {
+            return node.range;
+        }
+    } catch (e) {
+        console.error('Error in getRangeFromPath:', e);
+    }
+    return null;
+}
+
+function getPathAtOffset(yamlContent: string, offset: number): string[] | null {
+  try {
+    const docs = YAML.parseAllDocuments(yamlContent);
+    let docOffset = 0;
+    
+    for (let i = 0; i < docs.length; i++) {
+      const doc = docs[i];
+      // YAML package documents have a range [start, end, charEnd]
+      if (doc.range && offset >= doc.range[0] && offset <= doc.range[2]) {
+        // Find path within this document
+        const path = findPathInDocument(doc, offset);
+        if (path) {
+          return [i.toString(), ...path];
+        }
+        return [i.toString()]; // Default to doc root
+      }
+    }
+  } catch (e) {
+    console.error('Error in getPathAtOffset:', e);
+  }
+  return null;
+}
+
+function findPathInDocument(doc: YAML.Document, offset: number): string[] | null {
+  const node = doc.contents;
+  if (!node) return null;
+  
+  const path: string[] = [];
+  let current: any = node;
+
+  while (current) {
+    if (YAML.isMap(current)) {
+      let found = false;
+      for (const pair of current.items) {
+        if (YAML.isNode(pair.key) && pair.key.range && offset >= pair.key.range[0] && offset <= pair.key.range[2]) {
+          // Pointing at the key
+          path.push(String(pair.key));
+          return path;
+        }
+        if (YAML.isNode(pair.value) && pair.value.range && offset >= pair.value.range[0] && offset <= pair.value.range[2]) {
+          path.push(String(pair.key));
+          current = pair.value;
+          found = true;
+          break;
+        }
+      }
+      if (!found) return path;
+    } else if (YAML.isSeq(current)) {
+      let found = false;
+      for (let i = 0; i < current.items.length; i++) {
+        const item = current.items[i];
+        if (YAML.isNode(item) && item.range && offset >= item.range[0] && offset <= item.range[2]) {
+          path.push(`[${i}]`);
+          current = item;
+          found = true;
+          break;
+        }
+      }
+      if (!found) return path;
+    } else {
+      break;
+    }
+  }
+  return path.length > 0 ? path : null;
 }
 
 // Generate HTML to display in Webview

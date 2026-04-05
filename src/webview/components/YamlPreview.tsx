@@ -7,6 +7,7 @@ import { YamlDetector, YamlFormat } from '../../utils/yaml-detector';
 import { ThemeProvider } from '../utils/themeContext';
 import * as yamlOps from '../utils/yamlOperations';
 import { transformToLogicalGraph, getValueAtPath, trimValidationSnippet } from '../utils/graphUtils';
+import { Mascot } from './Mascot';
 
 // Property type definition
 interface YamlPreviewProps {
@@ -591,6 +592,13 @@ const YamlPreviewInner: React.FC<YamlPreviewProps> = ({ initialContent, vscodeAp
 
   return (
     <div className="yaml-preview-container">
+      <Mascot status={(() => {
+        if (error) return 'angry';
+        const vals = Object.values(nodeValidations);
+        if (vals.some(v => v.status === 'error')) return 'angry';
+        if (vals.some(v => v.status === 'warning')) return 'serious';
+        return 'happy';
+      })()} />
       <style>
         {`
           .yaml-preview-container {

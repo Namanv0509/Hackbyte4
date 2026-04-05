@@ -197,10 +197,17 @@ function setupWebview(panel: vscode.WebviewPanel, context: vscode.ExtensionConte
     const scriptPath = panel.webview.asWebviewUri(
       vscode.Uri.file(path.join(context.extensionPath, 'out', 'webview.js'))
     );
+
+    const mascotUris = {
+      happy: panel.webview.asWebviewUri(vscode.Uri.file(path.join(context.extensionPath, 'src', 'assests', 'happy.svg'))).toString(),
+      serious: panel.webview.asWebviewUri(vscode.Uri.file(path.join(context.extensionPath, 'src', 'assests', 'serious.svg'))).toString(),
+      angry: panel.webview.asWebviewUri(vscode.Uri.file(path.join(context.extensionPath, 'src', 'assests', 'angry.svg'))).toString(),
+    };
+
     console.log('Script path:', scriptPath.toString());
 
     // Generate HTML
-    panel.webview.html = getWebviewContent(scriptPath, yamlContent);
+    panel.webview.html = getWebviewContent(scriptPath, yamlContent, mascotUris);
     console.log('Webview HTML has been set');
 
     // Add script with custom event listeners
@@ -1370,7 +1377,7 @@ function findPathInDocument(doc: YAML.Document, offset: number): string[] | null
 }
 
 // Generate HTML to display in Webview
-function getWebviewContent(scriptUri: vscode.Uri, yamlContent: string) {
+function getWebviewContent(scriptUri: vscode.Uri, yamlContent: string, mascotUris: { happy: string, serious: string, angry: string }) {
   console.log('Generating webview HTML');
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1464,7 +1471,7 @@ function getWebviewContent(scriptUri: vscode.Uri, yamlContent: string) {
 
       // Initial data setup
       try {
-        window.initialData = ${JSON.stringify({ yamlContent })};
+        window.initialData = ${JSON.stringify({ yamlContent, mascotUris })};
         console.log('Webview initialized with data length:', ${yamlContent.length});
       } catch (e) {
         console.error('Failed to initialize data:', e);
